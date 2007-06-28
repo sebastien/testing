@@ -1,0 +1,24 @@
+== JavaScript Testing Library
+== Roadmap
+
+Version 0.8:
+
+  [ ] Mozilla scripting
+
+Version 0.3:
+
+  [ ] Test groups
+
+Version 0.2:
+
+  [ ] HTML/CSS extension to render the test cases
+
+Version 0.1:
+
+  [ ] Stateful unit test API
+  [ ] Basic assertion functions
+  [ ] Model is assertion -> test -> test 
+
+
+
+# vim: syn=kiwi ts=2 sw=2 et
