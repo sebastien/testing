@@ -1,24 +1,21 @@
-== JavaScript Testing Library
+== Testing Library
 == Roadmap
+
+Version 0.9:
+
+  [ ] Documentation
 
 Version 0.8:
 
-  [ ] Mozilla scripting
-
-Version 0.3:
-
-  [ ] Test groups
-
-Version 0.2:
-
+  [ ] Optional OOP Support
+  [X] Test cases
   [ ] HTML/CSS extension to render the test cases
+  [ ] Firebug support
+  [ ] Command-line support
 
-Version 0.1:
+Version 0.7:
 
-  [ ] Stateful unit test API
-  [ ] Basic assertion functions
-  [ ] Model is assertion -> test -> test 
-
-
+  [X] Stateful unit test API
+  [X] Basic assertion functions
 
 # vim: syn=kiwi ts=2 sw=2 et

@@ -1,25 +1,49 @@
 @module Testing
-@version 0.0.0 (19-Jun-2007)
+@version 0.5.0 (12-Nov-2007)
 @target JavaScript
-| The testing module implements a simple stateful test engine.
+| The testing module implements a simple stateful test engine that allows to
+| quickly setup and run tests.
 |
 | NOTE _________________________________________________________________________
 | This engine is designed to be used mainly with the JavaScript backend, and was
 | written so that it does not depend on the sugar runtime libraries.
 
 @shared TestCount:Integer  = 0
+@shared CaseCount:Integer  = 0
 @shared CurrentTest:String = Undefined
 @shared Results:List       = []
 
+@shared Callbacks = {
+	OnCaseStart : Undefined
+	OnCaseEnd   : Undefined
+	OnTestStart : Undefined
+	OnTestEnd   : Undefined
+	OnFailure   : Undefined
+	OnSuccess   : Undefined
+}
 
-| Callback invoked if a test is started
-@shared OnTestStart:Function  = Undefined
-| Callback invoked if a test is ended
-@shared OnTestEnd:Function    = Undefined
-| Callback invoked if a test assertion fails
-@shared OnFailure:Function    = Undefined
-| Callback invoked if a test assertion succeeds
-@shared OnSuccess:Function    = Undefined
+# ------------------------------------------------------------------------------
+# CREATING A NEW TEST CASE
+# ------------------------------------------------------------------------------
+
+@function testCase:Integer name
+| Creates a new test case with the given name, and returns the identifier of the
+| test case.
+	var case_id = CaseCount
+	if CaseCount > 0 -> endCase (case_id - 1)
+	if Callbacks OnCaseStart -> Callbacks OnCaseStart (case_id, name)
+	CurrentCase = name
+@end
+
+@function endCase:Integer caseID
+| Notifies the end of the give test case
+	# TODO: Give name and time for case ending
+	if Callbacks OnCaseEnd -> Callbacks OnCaseEnd (caseID)
+@end
+
+# ------------------------------------------------------------------------------
+# CREATING A NEW TEST
+# ------------------------------------------------------------------------------
 
 @function test:Integer name
 | Notifies that a new test has begun. The given 'name' will be the
@@ -32,19 +56,23 @@
 	# We trigger the callbacks first so that we do not have problems with timing
 	# by introduce the callback execution time
 	if TestCount > 0 -> end(test_id - 1)
-	if OnTestStart -> OnTestStart(test_id, name)
+	if Callbacks OnTestStart -> Callbacks OnTestStart(test_id, name)
 	CurrentTest = name
 	Results push {
-		tid:test_id
-		status:"S"
-		name:name
-		start:(new Date() getMilliseconds())
-		tests:[]
+		tid    : test_id
+		cid    : CaseCount
+		status : "S"
+		name   : name
+		start  : (new Date() getMilliseconds())
+		tests  : []
 	}
-	# console log ("Test " + test_id + ": " + name )
 	TestCount  += 1
 	return test_id
 @end
+
+# ------------------------------------------------------------------------------
+# ENDING A TEST
+# ------------------------------------------------------------------------------
 
 @function end testID
 | Ends the test with the given 'testID' (or the last test if no ID was given).
@@ -55,8 +83,12 @@
 	test end   = new Date() getMilliseconds()
 	test run   = (test end) - (test start)
 	test ended = True
-	if OnTestEnd -> OnTestEnd(testID, test)
+	if Callbacks OnTestEnd -> Callbacks OnTestEnd(testID, test)
 @end
+
+# ------------------------------------------------------------------------------
+# FAILING THE CURRENT TEST
+# ------------------------------------------------------------------------------
 
 @function fail reason
 | Fails the current test with the given reason
@@ -65,9 +97,13 @@
 	Results[ test_id ] tests push {result:"F", reason:reason}
 	Results[ test_id ] status = "F"
 	# TODO: Remove callback execution time
-	if OnFailure -> OnFailure(test_id, Results[test_id] tests length - 1, reason)
+	if Callbacks OnFailure -> Callbacks OnFailure(test_id, Results[test_id] tests length - 1, reason)
 	return False
 @end
+
+# ------------------------------------------------------------------------------
+# SUCCEEDING THE CURRENT TEST
+# ------------------------------------------------------------------------------
 
 @function succeed
 | Success the current test
@@ -75,9 +111,13 @@
 	var test_id = TestCount - 1
 	Results[ test_id ] tests push {result:"S"}
 	# TODO: Remove callback execution time
-	if OnSuccess -> OnSuccess(test_id, Results[test_id] tests length - 1)
+	if Callbacks OnSuccess -> Callbacks OnSuccess(test_id, Results[test_id] tests length - 1)
 	return True
 @end
+
+# ------------------------------------------------------------------------------
+# PREDICATES
+# ------------------------------------------------------------------------------
 
 @function asTrue val
 | Alias for 'value(val, True)'
@@ -126,6 +166,65 @@
 			return succeed()
 		end
 	end
+@end
+
+# FIXME: Add this
+# @shared PREDICATES {
+#	asTrue      : asTrue
+#	asFalse     : asFalse
+#	asUndefined : asUndefined
+#	asDefined   : asDefined
+#	unlike      : unlike
+#	value       : value
+#}
+
+@specific OOP
+
+	@class TestCase
+
+		@property name
+		@property tests = []
+
+		@constructor name = (self getClass() getName())
+			self name = name
+		@end
+
+		@method add tests...
+		@end
+
+		@method run
+			testCase (name)
+			tests :: {t| t run() }
+			endCase ()
+		@end
+
+	@end
+
+	@class UnitTest
+
+		@shared   ensure = testing
+		@property name
+
+		@constructor name = (self getClass() getName())
+			self name = name
+		@end
+
+		@method run
+			self getClass() listMethods() :: {m,n|
+				if n indexOf "test" == 0
+					runTest (m,n)
+				end
+			}
+		@end
+
+		@method runTest testFunction, name
+			test (name)
+			testFunction()
+			end ()
+		@end
+
+	@end
+
 @end
 
 # EOF
