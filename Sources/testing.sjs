@@ -1,6 +1,7 @@
-@module Testing
-@version 0.5.0 (12-Nov-2007)
+@module testing
+@version 0.5.0 (25-Jan-2008)
 @target JavaScript
+
 | The testing module implements a simple stateful test engine that allows to
 | quickly setup and run tests.
 |
@@ -168,31 +169,33 @@
 	end
 @end
 
-# FIXME: Add this
-# @shared PREDICATES {
-#	asTrue      : asTrue
-#	asFalse     : asFalse
-#	asUndefined : asUndefined
-#	asDefined   : asDefined
-#	unlike      : unlike
-#	value       : value
-#}
+@specific -NO_OOP
 
-@specific OOP
+	# --------------------------------------------------------------------------
+	#
+	# Test Case
+	#
+	# --------------------------------------------------------------------------
 
 	@class TestCase
+	| A test case is a collection of tests units
 
 		@property name
 		@property tests = []
 
 		@constructor name = (self getClass() getName())
+		| Creates a test case with the given name (which is the class name by
+		| default).
 			self name = name
 		@end
 
 		@method add tests...
+		| Adds the given tests to this test case tests list
+			tests :: {t| self tests push (t)}
 		@end
 
 		@method run
+		| Run all the tests registered in this test case.
 			testCase (name)
 			tests :: {t| t run() }
 			endCase ()
@@ -200,7 +203,15 @@
 
 	@end
 
-	@class UnitTest
+	# --------------------------------------------------------------------------
+	#
+	# Test Unit
+	#
+	# --------------------------------------------------------------------------
+
+	@class TestUnit
+	| A test unit is a collection of individual tests exercising one or a
+	| set of strongly related components.
 
 		@shared   ensure = testing
 		@property name
@@ -221,6 +232,82 @@
 			test (name)
 			testFunction()
 			end ()
+		@end
+
+	@end
+
+@end
+
+@specific -NO_HTML_REPORTER
+
+	# --------------------------------------------------------------------------
+	#
+	# Test Unit
+	#
+	# --------------------------------------------------------------------------
+
+	@class HtmlReporter
+
+		@property selector
+		@property callbacks
+
+		@constructor selector="#results"
+			self selector = selector
+			callbacks = {
+				OnCaseStart: onCaseStart
+				OnCaseEnd:   onCaseEnd
+				OnTestStart: onTestStart
+				OnTestEnd:   onTestEnd
+				OnSuccess:   onSuccess
+				OnFailure:   onFailure
+			}
+		@end
+
+		@method onCaseStart
+
+		@end
+
+		@method onCaseEnd
+		@end
+
+		@method onTestStart testID, testName
+			var test_row = html tr (
+				{
+					id    : "test_" + testId
+					class : "test test-running"
+				}
+				html td  ({class:"test-id"},"#" + testID )
+				html td  (
+					{class:"test-name"}
+					"" + testName
+					html div (
+						html ul {class:"assertions empty"}
+					)
+				)
+				html td({class:"test-time"}, "running...")
+			)
+			$(selector) append (test_row)
+		@end
+
+		@method onTestEnd testID, test
+			var test_row = $("#test_" + testID)
+			$ (test_row) removeClass "test-running"
+			if test status == "S" -> $(test_row) addClass "testSucceeded"
+			else                  -> $(test_row) addClass "testFailed"
+			$(".test-time", test_row) html ( test run + "ms" )
+		@end
+
+		@method onSuccess
+		@end
+
+		@method onFailure testID, num, reason
+			$ ("#test_" + testId +" .assertions") removeClass "empty" 
+			$ ("#test_" + testId +" .assertions") append (
+				html li (
+					{class:"assertion assertion-failed"}
+					"Assertion #" + num + " failed: " + reason
+				)
+			)
 		@end
 
 	@end
