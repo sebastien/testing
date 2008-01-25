@@ -1,14 +1,66 @@
 <html
 	<head
-		<title:Extend 2.0 Test Suite
-		<link(rel=Stylesheet,type=text/css,href=../Dependencies/testing.css)
-		<script(src=../Dependencies/jquery-1.1.2.js)
-		<script(src=../Dependencies/html.js)
-		<script(src=../Dependencies/testing.sjs)
-		<script(src=../Sources/extend.sjs)
+
+		<title:Testing - Example
+		<link(rel=Stylesheet,type=text/css,href=css/testing.css)
+		<script(type=text/javascript,src=js/jquery-1.2.1.js)
+		<script(type=text/javascript,src=js/html-1.1.js)
+		<script(type=text/javascript,src=js/extend+sugar.js)
+		<script(type=text/javascript,src=sjs/testing.sjs)
+
 	<body
-		<h1:Extend 2.0 Test Suite
+		<h1:Testing - Example
 		<p
-			This tests the <b:Extend 2.0> library
+			Shows how to use the <b:testing> module.
+
 		<table#result.testResults(width=100%,cellspacing=0,cellpadding=10)
-		<script(src=test-extend.js)
+
+		<script
+			$(document).ready(function(){
+				testing.HTMLReporter.Install()
+
+				testing.testCase("TestCase A")
+					
+						testing.test("My first test (this will succeed)")
+							testing.asTrue(true)
+							testing.asFalse(false)
+							testing.asUndefined(undefined)
+							testing.asDefined(0)
+							testing.asDefined(0)
+							testing.unlike(1,2)
+							testing.value(1)
+							testing.value(undefined,undefined)
+							testing.value(null,null)
+							testing.value("a","a")
+							// FIXME: This does not work yet
+							// testing.value([],[])
+						testing.end()
+
+						testing.test("My second test (with expected failure)")
+							testing.asTrue(false)
+							testing.asFalse(true)
+							testing.asUndefined(1)
+							testing.asDefined(undefined)
+						testing.end()
+
+						var pouet =  testing.test("My thirs test (with explicit failure)")
+							testing.asTrue(true)
+							testing.fail()
+						testing.end()
+
+
+						testing
+							.test("My fourth test (we enable exceptions on failure)")
+							.enable("ExceptionOnFailure")
+							.do(function(){
+								// Here only one assertion should be false,
+								// because the execution should be stopped here
+								testing.asFalse(true)
+								testing.asTrue(false)
+								testing.fail()
+							})
+							.disable("ExceptionOnFailure")
+						.end()
+
+				testing.endCase()
+			})

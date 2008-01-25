@@ -1,5 +1,5 @@
 @module testing
-@version 0.5.0 (25-Jan-2008)
+@version 0.6.0 (25-Jan-2008)
 @target JavaScript
 
 | The testing module implements a simple stateful test engine that allows to
@@ -8,6 +8,9 @@
 | NOTE _________________________________________________________________________
 | This engine is designed to be used mainly with the JavaScript backend, and was
 | written so that it does not depend on the sugar runtime libraries.
+
+# TODO: Add way to count assertion, or at least to refer to the line of the
+# invocation.
 
 @shared TestCount:Integer  = 0
 @shared CaseCount:Integer  = 0
@@ -21,7 +24,32 @@
 	OnTestEnd   : Undefined
 	OnFailure   : Undefined
 	OnSuccess   : Undefined
+	OnNote      : Undefined
+	OnLog       : Undefined
 }
+
+@shared Options = {
+	ExceptionOnFailure:False
+}
+
+# ------------------------------------------------------------------------------
+# OPTION MANAGEMENT
+# ------------------------------------------------------------------------------
+
+@function option name, value
+	Options[name] = value
+	return testing
+@end
+
+@function enable option
+	Options[option] = True
+	return testing
+@end
+
+@function disable option
+	Options[option] = False
+	return testing
+@end
 
 # ------------------------------------------------------------------------------
 # CREATING A NEW TEST CASE
@@ -34,12 +62,14 @@
 	if CaseCount > 0 -> endCase (case_id - 1)
 	if Callbacks OnCaseStart -> Callbacks OnCaseStart (case_id, name)
 	CurrentCase = name
+	return testing
 @end
 
 @function endCase:Integer caseID
 | Notifies the end of the give test case
 	# TODO: Give name and time for case ending
 	if Callbacks OnCaseEnd -> Callbacks OnCaseEnd (caseID)
+	return testing
 @end
 
 # ------------------------------------------------------------------------------
@@ -68,14 +98,18 @@
 		tests  : []
 	}
 	TestCount  += 1
-	return test_id
+	return testing
+@end
+
+@function currentTest
+	return TestCount - 1
 @end
 
 # ------------------------------------------------------------------------------
 # ENDING A TEST
 # ------------------------------------------------------------------------------
 
-@function end testID
+@function end testID=Undefined
 | Ends the test with the given 'testID' (or the last test if no ID was given).
 | Note that a test can only be ended once.
 	if testID is Undefined -> testID = TestCount - 1
@@ -85,11 +119,14 @@
 	test run   = (test end) - (test start)
 	test ended = True
 	if Callbacks OnTestEnd -> Callbacks OnTestEnd(testID, test)
+	return testing
 @end
 
 # ------------------------------------------------------------------------------
 # FAILING THE CURRENT TEST
 # ------------------------------------------------------------------------------
+
+# FIXME: This should take an optional test id parameter
 
 @function fail reason
 | Fails the current test with the given reason
@@ -99,6 +136,10 @@
 	Results[ test_id ] status = "F"
 	# TODO: Remove callback execution time
 	if Callbacks OnFailure -> Callbacks OnFailure(test_id, Results[test_id] tests length - 1, reason)
+	if Options ExceptionOnFailure
+		note ("Test interrupted by exception (see Options ExceptionOnFailure)")
+		raise (reason)
+	end
 	return False
 @end
 
@@ -106,9 +147,11 @@
 # SUCCEEDING THE CURRENT TEST
 # ------------------------------------------------------------------------------
 
+# FIXME: This should take an optional test id parameter
+
 @function succeed
 | Success the current test
-	#console log (" success !")
+	# console log (" success !")
 	var test_id = TestCount - 1
 	Results[ test_id ] tests push {result:"S"}
 	# TODO: Remove callback execution time
@@ -117,8 +160,45 @@
 @end
 
 # ------------------------------------------------------------------------------
+# FEEDBACK
+# ------------------------------------------------------------------------------
+
+@function note message
+	if Callbacks OnNote -> Callbacks OnNote (message)
+@end
+
+@function log arguments...
+	if Callbacks OnLog -> Callbacks OnLog (arguments join " ")
+@end
+
+# ------------------------------------------------------------------------------
+# TRYING A FUNCTION
+# ------------------------------------------------------------------------------
+
+@function do callback
+	try
+		callback()
+	catch e
+		# FIXME: Just because Sugar expects a catch
+		var foo = Undefined
+	end
+	return testing
+@end
+
+# ------------------------------------------------------------------------------
 # PREDICATES
 # ------------------------------------------------------------------------------
+
+@shared PREDICATES = {
+	asTrue:asTrue
+	asFalse:asFalse
+	asUndefined:asUndefined
+	asDefined:asDefined
+	asDefined:asDefined
+	asUndefined:asUndefined
+	unlike:unlike
+	value:value
+}
 
 @function asTrue val
 | Alias for 'value(val, True)'
@@ -132,12 +212,12 @@
 
 @function asUndefined val
 | Alias for 'value(val==Undefined, True)'
-	return value (val == Undefined, True)
+	return value (val is Undefined, True)
 @end
 
 @function asDefined val
 | Alias for 'value(val==Undefined, False)'
-	return value (val == Undefined, False)
+	return value (val is Undefined, False)
 @end
 
 @function unlike value, other
@@ -159,6 +239,8 @@
 			return succeed()
 		end
 	else
+		if value is expected
+			return succeed ()
 		if value is Undefined
 			return fail "Value expected to be defined"
 		if not value
@@ -167,6 +249,15 @@
 			return succeed()
 		end
 	end
+@end
+
+@function _getPredicateCaller level=2
+	var called_function = getCaller
+	while level > 0
+		called_function = called_function caller
+		level -= 1
+	end
+	return called_function
 @end
 
 @specific -NO_OOP
@@ -246,13 +337,16 @@
 	#
 	# --------------------------------------------------------------------------
 
-	@class HtmlReporter
+	@class HTMLReporter
 
 		@property selector
+		@property selector_table
+
 		@property callbacks
 
 		@constructor selector="#results"
 			self selector = selector
+			ensureUI ()
 			callbacks = {
 				OnCaseStart: onCaseStart
 				OnCaseEnd:   onCaseEnd
@@ -260,20 +354,56 @@
 				OnTestEnd:   onTestEnd
 				OnSuccess:   onSuccess
 				OnFailure:   onFailure
+				OnNote:      onNote
+				OnLog:       onLog
 			}
 		@end
 
-		@method onCaseStart
+		@operation Install
+		| Installs a new 'HTMLReporter' in the testing module. This returns the
+		| newly installed instance
+			var new_reporter = new HTMLReporter()
+			testing Callbacks = new_reporter callbacks
+			return new_reporter
+		@end
 
+		@method ensureUI
+		| Ensures that there is the proper HTML node in the document to add the
+		| results, otherwise creates it.
+			if $(selector) length == 0
+				$("body") append "<div id='results'>  </div>"
+			end
+			selector = $(selector)
+			if $("table", selector) length == 0
+				$(selector) append ( html table () )
+			end
+			selector_table = $("table", selector)
+			$(selector) addClass "TestResults"
+			$(selector_table) attr { cellpadding:"0", cellspacing:"0" }
+		@end
+
+		@method onCaseStart
 		@end
 
 		@method onCaseEnd
 		@end
 
+		@method onNote message
+			console log ("NOTE:" + message)
+			var test_row = $("#test_" + currentTest())
+			$(".notes", test_row) append (html li(message)) removeClass "empty"
+		@end
+
+		@method onLog message
+			var test_row = $("#test_" + currentTest())
+			var text = $(".log pre", test_row) text () + message + "\n"
+			$(".log pre", test_row) text (text) removeClass "empty"
+		@end
+
 		@method onTestStart testID, testName
 			var test_row = html tr (
 				{
-					id    : "test_" + testId
+					id    : "test_" + testID
 					class : "test test-running"
 				}
 				html td  ({class:"test-id"},"#" + testID )
@@ -283,17 +413,24 @@
 					html div (
 						html ul {class:"assertions empty"}
 					)
+					html div (
+						html ul {class:"notes empty"}
+					)
+					html div ({class:"log empty"},html pre ())
 				)
 				html td({class:"test-time"}, "running...")
 			)
-			$(selector) append (test_row)
+			$(selector_table) append (test_row)
 		@end
 
 		@method onTestEnd testID, test
 			var test_row = $("#test_" + testID)
 			$ (test_row) removeClass "test-running"
-			if test status == "S" -> $(test_row) addClass "testSucceeded"
-			else                  -> $(test_row) addClass "testFailed"
+			if test status == "S"
+				$(test_row) addClass "test-succeeded"
+			else
+				$(test_row) addClass "test-failed"
+			end
 			$(".test-time", test_row) html ( test run + "ms" )
 		@end
 
@@ -301,8 +438,8 @@
 		@end
 
 		@method onFailure testID, num, reason
-			$ ("#test_" + testId +" .assertions") removeClass "empty" 
-			$ ("#test_" + testId +" .assertions") append (
+			$ ("#test_" + testID +" .assertions") removeClass "empty" 
+			$ ("#test_" + testID +" .assertions") append (
 				html li (
 					{class:"assertion assertion-failed"}
 					"Assertion #" + num + " failed: " + reason
