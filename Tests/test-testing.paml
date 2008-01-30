@@ -52,7 +52,7 @@
 						testing
 							.test("My fourth test (we enable exceptions on failure)")
 							.enable("ExceptionOnFailure")
-							.do(function(){
+							.run(function(){
 								// Here only one assertion should be false,
 								// because the execution should be stopped here
 								testing.asFalse(true)

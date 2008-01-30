@@ -175,7 +175,7 @@
 # TRYING A FUNCTION
 # ------------------------------------------------------------------------------
 
-@function do callback
+@function run callback
 	try
 		callback()
 	catch e
