@@ -1,5 +1,5 @@
 @module testing
-@version 0.6.0 (25-Jan-2008)
+@version 0.6.1 (31-Jan-2008)
 @target JavaScript
 
 | The testing module implements a simple stateful test engine that allows to
@@ -190,6 +190,7 @@
 # ------------------------------------------------------------------------------
 
 @shared PREDICATES = {
+	ensure:ensure
 	asTrue:asTrue
 	asFalse:asFalse
 	asUndefined:asUndefined
@@ -197,8 +198,14 @@
 	asDefined:asDefined
 	asUndefined:asUndefined
 	unlike:unlike
+	same:same
 	value:value
 }
+
+@function ensure value
+| Really just an alias for 'asTrue'
+	return value (value, expected)
+@end
 
 @function asTrue val
 | Alias for 'value(val, True)'
@@ -227,6 +234,11 @@
 	else
 		succeed()
 	end
+@end
+
+@function same value, expected
+| Really just an alias for 'value'
+	return value (value, expected)
 @end
 
 @function value value, expected
