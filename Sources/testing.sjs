@@ -176,14 +176,31 @@
 # ------------------------------------------------------------------------------
 
 @function run callback
+| Runs the given callback function in a 'try...' catch clause. Exceptions
+| will be absorbed and not propagated back in the containing code.
+|
+| Ex: 'testing run { ... }'
 	try
 		callback()
 	catch e
-		# FIXME: Just because Sugar expects a catch
-		var foo = Undefined
+		fail ("Test failed with exception: " + e)
 	end
 	return testing
 @end
+
+@function expectException callback
+| Expects an exception being raised when executing the given callback
+|
+| Ex: 'testing expectException { ... }'
+	try
+		callback ()
+		fail     ()
+	catch e
+		succeed ()
+	end
+	return testing
+@end
+
 
 # ------------------------------------------------------------------------------
 # PREDICATES
@@ -202,9 +219,9 @@
 	value:value
 }
 
-@function ensure value
+@function ensure val
 | Really just an alias for 'asTrue'
-	return value (value, expected)
+	return asTrue (val)
 @end
 
 @function asTrue val
@@ -236,9 +253,9 @@
 	end
 @end
 
-@function same value, expected
+@function same val, expected
 | Really just an alias for 'value'
-	return value (value, expected)
+	return value (val, expected)
 @end
 
 @function value value, expected
