@@ -94,7 +94,7 @@
 		cid    : CaseCount
 		status : "S"
 		name   : name
-		start  : (new Date() getMilliseconds())
+		start  : (new Date() getTime())
 		tests  : []
 	}
 	TestCount  += 1
@@ -115,7 +115,7 @@
 	if testID is Undefined -> testID = TestCount - 1
 	var test = Results[testID] 
 	if test ended -> return True
-	test end   = new Date() getMilliseconds()
+	test end   = new Date() getTime()
 	test run   = (test end) - (test start)
 	test ended = True
 	if Callbacks OnTestEnd -> Callbacks OnTestEnd(testID, test)
