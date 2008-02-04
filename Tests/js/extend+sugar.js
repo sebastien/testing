@@ -22,7 +22,7 @@
 function _meta_(v,m){var ms=v['__meta__']||{};for(var k in m){ms[k]=m[k]};v['__meta__']=ms;return v}
 var Extend={}
 var __this__=Extend
-Extend._VERSION_='2.1.0a';
+Extend._VERSION_='2.1.0d';
 Extend.Registry={}
 Extend.Class=	_meta_(function(declaration){
 		// Classes are created using extend by giving a dictionary that contains the
@@ -697,14 +697,110 @@ Extend.sliceArguments=	_meta_(function(args, index){
 			arity:2,
 			arguments:[{'name': 'args'}, {'name': 'index'}]
 		})
-Extend.slice=	_meta_(function(list, start, end){
+Extend.slice=	_meta_(function(value, start, end){
 		var __this__=Extend;
-		start = start || 0
-		end = end || undefined
-		return list.slice(start, end)
+		start = start === undefined ? 0 : start
+		end = end === undefined ? undefined : end
+		if ( Extend.isString(value) )
+		{
+			if ( (end === undefined) )
+			{
+				end = value.length;
+			}
+			if ( (start < 0) )
+			{start = (value.length + start);}
+			if ( (end < 0) )
+			{end = (value.length + end);}
+			return value.substring(start, end)
+		}
+		else if ( Extend.isList(value) )
+		{
+			if ( (end === undefined) )
+			{
+				end = value.length;
+			}
+			if ( (start < 0) )
+			{start = (value.length + start);}
+			if ( (end < 0) )
+			{end = (value.length + end);}
+			return value.slice(start, end)
+		}
+		else if ( true )
+		{
+			throw ("Unsupported type for slice:" + value)
+		}
 	},	{
 			arity:3,
-			arguments:[{'name': 'list'}, {'flags': '=', 'name': 'start'}, {'flags': '=', 'name': 'end'}]
+			arguments:[{'name': 'value'}, {'flags': '=', 'name': 'start'}, {'flags': '=', 'name': 'end'}]
+		})
+Extend.createMapFromItems=	_meta_(function(items){
+		var __this__=Extend;
+		items = Extend.sliceArguments(arguments,0)
+		 var result = {}
+		 for ( var i=0 ; i<items.length ; i++ ) {
+		   result[items[i][0]] = items[i][1]
+		 }
+		 return result
+		
+	},	{
+			arity:1,
+			arguments:[{'flags': '*', 'name': 'items'}]
+		})
+Extend.isDefined=	_meta_(function(value){
+		var __this__=Extend;
+		return (! (value === undefined))
+	},	{
+			arity:1,
+			arguments:[{'name': 'value'}]
+		})
+Extend.isList=	_meta_(function(value){
+		var __this__=Extend;
+		 return !!( !(value===null) && typeof value == "object" && value.join && value.splice);
+		
+	},	{
+			arity:1,
+			arguments:[{'name': 'value'}]
+		})
+Extend.isString=	_meta_(function(value){
+		var __this__=Extend;
+		return (typeof(value) == "string")
+	},	{
+			arity:1,
+			arguments:[{'name': 'value'}]
+		})
+Extend.isMap=	_meta_(function(value){
+		var __this__=Extend;
+		 return !!(!(value===null) && typeof value == "object" && !Extend.isList(value))
+		
+	},	{
+			arity:1,
+			arguments:[{'name': 'value'}]
+		})
+Extend.isFunction=	_meta_(function(value){
+		var __this__=Extend;
+		 return !!(typeof value == "function")
+		
+	},	{
+			arity:1,
+			arguments:[{'name': 'value'}]
+		})
+Extend.isInstance=	_meta_(function(value, ofClass){
+		// Tells if the given value is an instance (in the sense of Extend) of the
+		// given 'ofClass'. If there is no given class, then it will just return
+		// true if the value is an instance of any class.
+		var __this__=Extend;
+		ofClass = ofClass === undefined ? undefined : ofClass
+		if ( ofClass )
+		{
+			return (Extend.isDefined(value.getClass) && value.isInstance(ofClass))
+		}
+		else if ( true )
+		{
+			return Extend.isDefined(value.getClass)
+		}
+	},	{
+			arity:2,
+			arguments:[{'name': 'value'}, {'flags': '=', 'name': 'ofClass'}]
 		})
 Extend.print=	_meta_(function(args){
 		// Prints the given arguments to the JavaScript console (available in Safari
