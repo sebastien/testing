@@ -15,6 +15,7 @@
 @shared TestCount:Integer  = 0
 @shared CaseCount:Integer  = 0
 @shared CurrentTest:String = Undefined
+@shared PredicateStack     = []
 @shared Results:List       = []
 
 @shared Callbacks = {
@@ -131,16 +132,20 @@
 @function fail reason
 | Fails the current test with the given reason
 	# console log (" failure: " + reason)
-	var test_id = TestCount - 1
-	Results[ test_id ] tests push {result:"F", reason:reason}
-	Results[ test_id ] status = "F"
-	# TODO: Remove callback execution time
-	if Callbacks OnFailure -> Callbacks OnFailure(test_id, Results[test_id] tests length - 1, reason)
-	if Options ExceptionOnFailure
-		note ("Test interrupted by exception (see Options ExceptionOnFailure)")
-		raise (reason)
+	if PredicateStack length == 0
+		var test_id = TestCount - 1
+		Results[ test_id ] tests push {result:"F", reason:reason}
+		Results[ test_id ] status = "F"
+		# TODO: Remove callback execution time
+		if Callbacks OnFailure -> Callbacks OnFailure(test_id, Results[test_id] tests length - 1, reason)
+		if Options ExceptionOnFailure
+			note ("Test interrupted by exception (see Options ExceptionOnFailure)")
+			raise (reason)
+		end
+		return False
+	else
+		return reason
 	end
-	return False
 @end
 
 # ------------------------------------------------------------------------------
@@ -152,10 +157,12 @@
 @function succeed
 | Success the current test
 	# console log (" success !")
-	var test_id = TestCount - 1
-	Results[ test_id ] tests push {result:"S"}
-	# TODO: Remove callback execution time
-	if Callbacks OnSuccess -> Callbacks OnSuccess(test_id, Results[test_id] tests length - 1)
+	if PredicateStack length == 0
+		var test_id = TestCount - 1
+		Results[ test_id ] tests push {result:"S"}
+		# TODO: Remove callback execution time
+		if Callbacks OnSuccess -> Callbacks OnSuccess(test_id, Results[test_id] tests length - 1)
+	end
 	return True
 @end
 
@@ -201,6 +208,16 @@
 	return testing
 @end
 
+@function expectFailure callback, args...
+	PredicateStack push (expectFailure)
+	var result = callback apply (self, args)
+	PredicateStack pop ()
+	if result is True
+		return fail "A failure was expected"
+	else
+		return succeed ()
+	end
+@end
 
 # ------------------------------------------------------------------------------
 # PREDICATES
@@ -254,8 +271,41 @@
 @end
 
 @function same val, expected
-| Really just an alias for 'value'
-	return value (val, expected)
+| Same is a better version of 'value' that will introspect dictionaries and
+| lists to check that the keys and items are the same.
+	var result  = True
+	PredicateStack push (same)
+	if Extend isList (expected)
+		if Extend isList (val)
+			expected :: {v,i|
+				# TODO: We should break
+				if (i >= val length) or ( (same (val[i], v)) != True) -> result = False
+			}
+			if result != True
+				result = "The lists are different"
+			end
+		else
+			result = "A list is expected"
+		end
+	if Extend isMap (expected)
+		if Extend isMap (val)
+			expected :: {v,i|
+				# TODO: We should break
+				if (same (val[i], v) != True) -> result = False
+			}
+			if not result -> result = "The maps are different"
+		else
+			result =  "A map was expected"
+		end
+	else
+		result = value(val, expected)
+	end
+	PredicateStack pop ()
+	if result is True
+		return succeed ()
+	else
+		return fail (result)
+	end
 @end
 
 @function value value, expected
