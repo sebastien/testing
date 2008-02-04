@@ -1,0 +1,51 @@
+<html
+	<head
+
+		<title:Testing - Predicates
+		<link(rel=Stylesheet,type=text/css,href=css/testing.css)
+		<script(type=text/javascript,src=js/jquery-1.2.1.js)
+		<script(type=text/javascript,src=js/html-1.1.js)
+		<script(type=text/javascript,src=js/extend+sugar.js)
+		<script(type=text/javascript,src=sjs/testing.sjs)
+
+	<body
+		<h1:Testing - Predicates
+		<p
+			Test suite for the  <b:testing> module predicate functions.
+
+		<table#result.testResults(width=100%,cellspacing=0,cellpadding=10)
+
+		<script
+			$(document).ready(function(){
+				testing.HTMLReporter.Install()
+
+				testing.testCase("Advanced")
+
+						testing
+							.test("Expecting failures")
+							testing.expectFailure(testing.fail)
+							testing.expectFailure(testing.asTrue,false)
+							testing.expectFailure(testing.asFalse,true)
+							testing.expectFailure(testing.expectFailure,testing.succeed)
+						testing.end()
+
+						testing
+							.test("Same (arrays and lists)")
+							testing.same(0,0)
+							testing.same(1,1)
+							testing.same([],[])
+							testing.same([1],[1])
+							testing.same([1,2],[1,2])
+							testing.same([1,2,[3]],[1,2,[3]])
+							testing.same({},{})
+							testing.same({a:1},{a:1})
+							testing.same({a:1,b:[]},{a:1,b:[]})
+							testing.expectFailure(testing.same,[1],[2])
+							testing.expectFailure(testing.same,{1:1},{1:2})
+							testing.expectFailure(testing.same,{1:1},{1:2})
+						testing.end()
+
+				testing.endCase()
+			})
+
+# EOF
