@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-# Project   : Iciela
+# Project   : Testing
 # -----------------------------------------------------------------------------
 # Author    : Sebastien Pierre                            <sebastien@ffctn.com>
 # License   : Revised BSD License
