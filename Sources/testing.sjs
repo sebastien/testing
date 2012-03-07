@@ -1,5 +1,15 @@
+# -----------------------------------------------------------------------------
+# Project   : Iciela
+# -----------------------------------------------------------------------------
+# Author    : Sebastien Pierre                            <sebastien@ffctn.com>
+# License   : Revised BSD License
+# -----------------------------------------------------------------------------
+# Creation  : 28-Jun-2007
+# Last mod  : 21-Oct-2010
+# -----------------------------------------------------------------------------
+
 @module testing
-@version 0.6.1 (31-Jan-2008)
+@version 0.6.2 (21-Oct-2010)
 @target JavaScript
 
 | The testing module implements a simple stateful test engine that allows to
@@ -11,6 +21,9 @@
 
 # TODO: Add way to count assertion, or at least to refer to the line of the
 # invocation.
+
+@shared DEFAULT_TEST_TIMEOUT     = 5  * 1000
+@shared DEFAULT_TESTCASE_TIMEOUT = 10 * 1000
 
 @shared TestCount:Integer  = 0
 @shared CaseCount:Integer  = 0
@@ -56,12 +69,13 @@
 # CREATING A NEW TEST CASE
 # ------------------------------------------------------------------------------
 
-@function testCase:Integer name
+@function testCase:Integer name, timeout=DEFAULT_TESTCASE_TIMEOUT
 | Creates a new test case with the given name, and returns the identifier of the
 | test case.
 	var case_id = CaseCount
 	if CaseCount > 0 -> endCase (case_id - 1)
 	if Callbacks OnCaseStart -> Callbacks OnCaseStart (case_id, name)
+
 	CurrentCase = name
 	return testing
 @end
@@ -77,7 +91,7 @@
 # CREATING A NEW TEST
 # ------------------------------------------------------------------------------
 
-@function test:Integer name
+@function test:Integer name, timeout=DEFAULT_TEST_TIMEOUT
 | Notifies that a new test has begun. The given 'name' will be the
 | test description. This returns an identifier (as an int) that will allow to
 | access the test.
@@ -131,7 +145,6 @@
 
 @function fail reason
 | Fails the current test with the given reason
-	# console log (" failure: " + reason)
 	if PredicateStack length == 0
 		var test_id = TestCount - 1
 		Results[ test_id ] tests push {result:"F", reason:reason}
@@ -227,8 +240,8 @@
 	ensure:ensure
 	asTrue:asTrue
 	asFalse:asFalse
+	asNull:asNull
 	asUndefined:asUndefined
-	asDefined:asDefined
 	asDefined:asDefined
 	asUndefined:asUndefined
 	unlike:unlike
@@ -236,47 +249,87 @@
 	value:value
 }
 
-@function ensure val
+@function ensure val, message=Undefined
 | Really just an alias for 'asTrue'
-	return asTrue (val)
-@end
-
-@function asTrue val
-| Alias for 'value(val, True)'
-	return value (val, True)
-@end
-
-@function asFalse val
-| Alias for 'value(val, False)'
-	return value (val, False)
-@end
-
-@function asUndefined val
-| Alias for 'value(val==Undefined, True)'
-	return value (val is Undefined, True)
-@end
-
-@function asDefined val
-| Alias for 'value(val==Undefined, False)'
-	return value (val is Undefined, False)
-@end
-
-@function unlike value, other
-| Unsures that the given 'value' is different from the 'other' value
-	if value == other
-		fail ("Values are expected to be different '" + value + "' vs '" + other + "'")
+	if isList( val )
+		if val length > 0
+			return succeed ()
+		else
+			return fail(message or ("Value should not be empty: " + val))
+		end
+	if isObject( val ) and isDefined (val length )
+		if val length > 0
+			return succeed ()
+		else
+			return fail(message or ("Value should not have length=0: " + val))
+		end
+	if val
+		return succeed ()
 	else
-		succeed()
+		return fail(message or ("Value should be true, non-null, got: " val))
 	end
 @end
 
-@function same val, expected
+@function asTrue val, message=Undefined
+| Alias for 'value(val, True)'
+	if not (val is True)
+		return fail (message or ("Value should be 'true', got " + val))
+	else
+		return succeed ()
+	end
+@end
+
+@function asFalse val, message=Undefined
+| Alias for 'value(val, False)'
+	if not (val is False)
+		return fail (message or ("Value should be 'false', got " + val))
+	else
+		return succeed ()
+	end
+@end
+
+@function asNull val, message=Undefined
+	if not (val is null)
+		return fail (message or ("Value should be 'null', got " + val))
+	else
+		return succeed ()
+	end
+@end
+
+@function asUndefined val, message=Undefined
+| Alias for 'value(val==Undefined, True)'
+	if not (val is Undefined)
+		return fail (message or ("Value should be 'undefined', got " + val))
+	else
+		return succeed ()
+	end
+@end
+
+@function asDefined val, message=Undefined
+| Alias for 'value(val==Undefined, False)'
+	if not isDefined (val)
+		return fail (message or ("Value should be defined, got " + val ))
+	else
+		return succeed()
+	end
+@end
+
+@function unlike value, other, message=Undefined
+| Unsures that the given 'value' is different from the 'other' value
+	if value == other
+		return fail (message or ("Values are expected to be different '" + value + "' vs '" + other + "'"))
+	else
+		return succeed()
+	end
+@end
+
+@function same val, expected, message
 | Same is a better version of 'value' that will introspect dictionaries and
 | lists to check that the keys and items are the same.
 	var result  = True
 	PredicateStack push (same)
-	if Extend isList (expected)
-		if Extend isList (val)
+	if isList (expected)
+		if isList (val)
 			expected :: {v,i|
 				# TODO: We should break
 				if (i >= val length) or ( (same (val[i], v)) != True) -> result = False
@@ -287,8 +340,8 @@
 		else
 			result = "A list is expected"
 		end
-	if Extend isMap (expected)
-		if Extend isMap (val)
+	if isMap (expected)
+		if isMap (val)
 			expected :: {v,i|
 				# TODO: We should break
 				if (same (val[i], v) != True) -> result = False
@@ -304,7 +357,7 @@
 	if result is True
 		return succeed ()
 	else
-		return fail (result)
+		return fail (message or result)
 	end
 @end
 
@@ -461,14 +514,18 @@
 			$(selector_table) attr { cellpadding:"0", cellspacing:"0" }
 		@end
 
-		@method onCaseStart
+		@method onCaseStart caseID, name
+			var test_row = html tr (
+				{ id:"testcase_" + caseID, class:"testcase"}
+				html td  ({class:"testcase-name",colspan:"3"}, "" + name)
+			)
+			$(selector_table) append (test_row)
 		@end
 
 		@method onCaseEnd
 		@end
 
 		@method onNote message
-			console log ("NOTE:" + message)
 			var test_row = $("#test_" + currentTest())
 			$(".notes", test_row) append (html li(message)) removeClass "empty"
 		@end

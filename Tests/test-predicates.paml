@@ -1,13 +1,11 @@
 <html
 	<head
-
 		<title:Testing - Predicates
 		<link(rel=Stylesheet,type=text/css,href=css/testing.css)
 		<script(type=text/javascript,src=js/jquery-1.2.1.js)
 		<script(type=text/javascript,src=js/html-1.1.js)
-		<script(type=text/javascript,src=js/extend+sugar.js)
+		<script(type=text/javascript,src=js/extend-2.2.9.min.js)
 		<script(type=text/javascript,src=sjs/testing.sjs)
-
 	<body
 		<h1:Testing - Predicates
 		<p
@@ -15,7 +13,7 @@
 
 		<table#result.testResults(width=100%,cellspacing=0,cellpadding=10)
 
-		<script
+		<script(type=text/javascript)@raw
 			$(document).ready(function(){
 				testing.HTMLReporter.Install()
 
